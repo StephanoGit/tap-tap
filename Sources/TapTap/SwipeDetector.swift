@@ -54,9 +54,9 @@ public struct SwipeDetectorConfig: Sendable {
 /// 4. The sign and axis of the dominant displacement determine the
 ///    ``SwipeDirection``.
 ///
-/// Axis mapping (Apple Watch on the left wrist, standard orientation):
+/// Axis mapping (Apple Watch, hand pointing forward):
 /// - **X axis** → horizontal: positive = rightward, negative = leftward
-/// - **Y axis** → vertical: positive = upward, negative = downward
+/// - **Y axis** → vertical (inverted): positive = downward, negative = upward
 public final class SwipeDetector {
 
     // MARK: - State
@@ -261,7 +261,7 @@ public final class SwipeDetector {
         case .x:
             direction = dominantVelocity > 0 ? .right : .left
         case .y:
-            direction = dominantVelocity > 0 ? .up : .down
+            direction = dominantVelocity > 0 ? .down : .up
         case .z:
             return // Ignore z-dominant gestures
         }

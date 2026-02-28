@@ -95,14 +95,14 @@ final class SwipeDetectorTests: XCTestCase {
 
     func testSwipeUpDetected() {
         let (detector, collector) = makeDetector()
-        simulateSwipe(detector: detector, axis: "y", positive: true)
+        simulateSwipe(detector: detector, axis: "y", positive: false)
         XCTAssertEqual(collector.events, [.swipeUp])
         XCTAssertEqual(detector.state, .idle)
     }
 
     func testSwipeDownDetected() {
         let (detector, collector) = makeDetector()
-        simulateSwipe(detector: detector, axis: "y", positive: false)
+        simulateSwipe(detector: detector, axis: "y", positive: true)
         XCTAssertEqual(collector.events, [.swipeDown])
         XCTAssertEqual(detector.state, .idle)
     }
@@ -174,7 +174,7 @@ final class SwipeDetectorTests: XCTestCase {
 
         XCTAssertEqual(collector.events.count, 2)
         XCTAssertEqual(collector.events[0], .swipeRight)
-        XCTAssertEqual(collector.events[1], .swipeDown)
+        XCTAssertEqual(collector.events[1], .swipeUp)
     }
 
     // MARK: - Timeout

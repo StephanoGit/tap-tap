@@ -20,7 +20,7 @@ public struct TapDetectorConfig: Sendable {
     public var longTapVarianceThreshold: Double
 
     public init(
-        threshold: Double = 1.5,
+        threshold: Double = 0.5,
         lockoutInterval: TimeInterval = 0.120,
         doubleTapWindow: TimeInterval = 0.350,
         longTapHoldDuration: TimeInterval = 0.500,

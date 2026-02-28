@@ -26,16 +26,16 @@ final class TapDetectorTests: XCTestCase {
         // sqrt(3^2 + 4^2 + 0^2) == 5
         let detector = TapDetector()
         // We can verify magnitude indirectly by feeding a sample that should
-        // exceed the default threshold (1.5g).
+        // exceed the default threshold (0.5g).
         detector.processSample(x: 3, y: 4, z: 0, timestamp: 0)
-        // magnitude = 5 > 1.5 → should trigger
+        // magnitude = 5 > 0.5 → should trigger
         // Wait for the async timer — but for state we can check immediately
         XCTAssertEqual(detector.state, .waitingForSecondTap)
     }
 
     func testBelowThresholdDoesNotTrigger() {
         let (detector, collector) = makeDetector()
-        // magnitude = sqrt(0.1^2 * 3) ≈ 0.17 < 1.5
+        // magnitude = sqrt(0.1^2 * 3) ≈ 0.17 < 0.5
         detector.processSample(x: 0.1, y: 0.1, z: 0.1, timestamp: 0)
         XCTAssertEqual(detector.state, .idle)
         XCTAssertTrue(collector.events.isEmpty)

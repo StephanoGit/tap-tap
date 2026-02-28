@@ -31,7 +31,7 @@ IMU stream → magnitude → peak detection → lockout → state machine → ev
 ```
 
 1. **Magnitude** — `√(x² + y² + z²)` of user acceleration (gravity removed).
-2. **Peak detection** — magnitude exceeds a configurable threshold.
+2. **Peak detection** — magnitude exceeds a configurable threshold (default 0.5g).
 3. **Lockout** — ignores ringing oscillations for ~120 ms after a peak.
 4. **State machine** — classifies peaks into single, double, or long taps.
 
@@ -100,7 +100,7 @@ swipeDetector.processSample(
 
 ```swift
 let config = TapDetectorConfig(
-    threshold: 1.5,            // magnitude in g
+    threshold: 0.5,            // magnitude in g
     lockoutInterval: 0.120,    // seconds
     doubleTapWindow: 0.350,    // seconds
     longTapHoldDuration: 0.500,// seconds
@@ -267,14 +267,14 @@ class TapViewModel: ObservableObject {
 
 Once the app launches on your Apple Watch:
 
-1. Rest your wrist on a flat surface (table or desk)
-2. **Single tap** the surface near the watch — you should see "Single Tap"
+1. **Point your hand forward** (arm extended, palm facing down)
+2. **Single tap** the surface near the watch with a finger — you should see "Single Tap"
 3. **Double tap** quickly — you should see "Double Tap"
 4. **Tap and hold** your finger down — you should see "Long Tap"
 5. **Swipe your wrist left** — you should see "Swipe Left ←"
 6. **Swipe your wrist right** — you should see "Swipe Right →"
-7. **Flick your wrist up** — you should see "Swipe Up ↑"
-8. **Flick your wrist down** — you should see "Swipe Down ↓"
+7. **Tilt your wrist up** — you should see "Swipe Up ↑"
+8. **Tilt your wrist down** — you should see "Swipe Down ↓"
 
 ### Troubleshooting
 
@@ -282,8 +282,8 @@ Once the app launches on your Apple Watch:
 |---------|-----|
 | Watch not appearing in Xcode | Make sure iPhone is connected via USB and watch is paired. Restart Xcode. |
 | "Untrusted Developer" on watch | Go to **Settings → General → Device Management** on the watch and trust your profile. |
-| No tap events detected | Try adjusting `threshold` lower (e.g. `1.0`) — sensitivity varies by surface. |
-| Too many false positives | Increase `threshold` (e.g. `2.0`) or increase `lockoutInterval` (e.g. `0.150`). |
+| No tap events detected | Try adjusting `threshold` lower (e.g. `0.3`) — sensitivity varies by surface. |
+| Too many false positives | Increase `threshold` (e.g. `1.0`) or increase `lockoutInterval` (e.g. `0.150`). |
 | Swipes not detected | Lower `activationThreshold` (e.g. `0.3`) or decrease `minDisplacement` (e.g. `0.04`). |
 | Diagonal swipes triggering | Increase `axisRatio` (e.g. `2.0`) to require more directional motion. |
 | App crashes on launch | Ensure `NSMotionUsageDescription` is set in `Info.plist`. |
