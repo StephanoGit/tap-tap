@@ -133,8 +133,9 @@ final class TapDetectorTests: XCTestCase {
         // Second tap outside the double-tap window
         detector.processMagnitude(2.0, timestamp: 0.500)
 
-        // Should NOT be a double tap; should start a new waiting state
-        XCTAssertTrue(collector.events.isEmpty || collector.events == [.singleTap])
+        // Should NOT be a double tap; the old timer is invalidated by the new
+        // firstTapTime, so no events are emitted synchronously.
+        XCTAssertTrue(collector.events.isEmpty)
         XCTAssertEqual(detector.state, .waitingForSecondTap)
     }
 

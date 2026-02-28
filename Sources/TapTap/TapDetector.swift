@@ -43,9 +43,10 @@ public struct TapDetectorConfig: Sendable {
 /// The detector implements a minimal state machine:
 ///
 /// ```
-/// IDLE → TAP_DETECTED → WAITING_FOR_SECOND_TAP
-///                           ├─ second tap within window  → doubleTap
-///                           └─ timeout                   → singleTap
+/// IDLE → WAITING_FOR_SECOND_TAP
+///           ├─ second tap within window  → doubleTap → IDLE
+///           ├─ timeout                   → singleTap → IDLE
+///           └─ low variance hold         → longTap   → IDLE
 /// ```
 ///
 /// Long-tap detection works by monitoring acceleration variance after a
@@ -57,7 +58,6 @@ public final class TapDetector {
 
     public enum State: Equatable, Sendable {
         case idle
-        case tapDetected
         case waitingForSecondTap
     }
 
@@ -161,7 +161,7 @@ public final class TapDetector {
             startHoldTracking(at: timestamp)
             scheduleSingleTapTimeout(tapTime: timestamp)
 
-        case .tapDetected, .waitingForSecondTap:
+        case .waitingForSecondTap:
             if let first = firstTapTime, timestamp - first < config.doubleTapWindow {
                 cancelPendingTimer()
                 emit(.doubleTap)
