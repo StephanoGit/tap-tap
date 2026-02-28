@@ -67,6 +67,149 @@ let config = TapDetectorConfig(
 let detector = TapDetector(config: config)
 ```
 
+## Running on Apple Watch Series 7
+
+### Prerequisites
+
+- **Mac** with **Xcode 15** or later
+- **Apple Watch Series 7** paired with an iPhone, both signed into the same Apple ID
+- **Apple Developer account** (free or paid) — required to deploy to a physical device
+- Watch running **watchOS 8** or later (Series 7 ships with watchOS 8+)
+
+### Step 1 — Create a watchOS App in Xcode
+
+1. Open Xcode → **File → New → Project**
+2. Select the **watchOS** tab → **App** → **Next**
+3. Enter a product name (e.g. `TapTapDemo`), set the interface to **SwiftUI**, and lifecycle to **SwiftUI App**
+4. Make sure the **Bundle Identifier** uses your team prefix (e.g. `com.yourname.TapTapDemo`)
+5. Click **Create**
+
+### Step 2 — Add TapTap as a Package Dependency
+
+1. In Xcode, select your project in the navigator
+2. Go to **Package Dependencies** tab → click **+**
+3. Enter the repository URL:
+   ```
+   https://github.com/StephanoGit/tap-tap.git
+   ```
+4. Set the dependency rule (e.g. **Branch → main** or **Up to Next Major Version**)
+5. Click **Add Package**, then add the `TapTap` library to your watch app target
+
+### Step 3 — Add Motion Usage Description
+
+Add a motion usage description to your watch app's `Info.plist`:
+
+| Key | Value |
+|-----|-------|
+| `NSMotionUsageDescription` | `TapTap needs accelerometer access to detect tap gestures.` |
+
+You can add this in Xcode under your watch app target → **Info** tab → **Custom iOS Target Properties**, or edit `Info.plist` directly:
+
+```xml
+<key>NSMotionUsageDescription</key>
+<string>TapTap needs accelerometer access to detect tap gestures.</string>
+```
+
+### Step 4 — Write the Watch App Code
+
+Replace the contents of your main `ContentView.swift` with:
+
+```swift
+import SwiftUI
+import CoreMotion
+import TapTap
+
+struct ContentView: View {
+    @StateObject private var viewModel = TapViewModel()
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(viewModel.lastEvent)
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Text("Tap count: \(viewModel.tapCount)")
+                .font(.caption)
+        }
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
+    }
+}
+
+class TapViewModel: ObservableObject {
+    @Published var lastEvent = "Waiting…"
+    @Published var tapCount = 0
+
+    private let motionManager = CMMotionManager()
+    private let detector = TapDetector()
+    private let queue = OperationQueue()
+
+    init() {
+        detector.onTap = { [weak self] event in
+            DispatchQueue.main.async {
+                self?.tapCount += 1
+                switch event {
+                case .singleTap:  self?.lastEvent = "Single Tap"
+                case .doubleTap:  self?.lastEvent = "Double Tap"
+                case .longTap:    self?.lastEvent = "Long Tap"
+                }
+            }
+        }
+    }
+
+    func start() {
+        guard motionManager.isDeviceMotionAvailable else {
+            lastEvent = "No motion sensor"
+            return
+        }
+        motionManager.deviceMotionUpdateInterval = 1.0 / 100.0  // 100 Hz
+        motionManager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
+            guard let motion else { return }
+            self?.detector.processSample(
+                x: motion.userAcceleration.x,
+                y: motion.userAcceleration.y,
+                z: motion.userAcceleration.z,
+                timestamp: motion.timestamp
+            )
+        }
+    }
+
+    func stop() {
+        motionManager.stopDeviceMotionUpdates()
+    }
+}
+```
+
+### Step 5 — Configure Signing and Deploy
+
+1. Select your **watch app target** in Xcode
+2. Go to the **Signing & Capabilities** tab
+3. Check **Automatically manage signing** and select your **Team**
+4. Connect your **iPhone** to your Mac via USB (the paired Apple Watch deploys over the iPhone)
+5. In the Xcode toolbar, select your **Apple Watch** as the run destination — it appears as `YourName's Apple Watch` under your iPhone
+6. Press **⌘R** (or click **Run**)
+
+> **First-time setup:** If this is your first time deploying to the watch, Xcode may need to prepare the device. This can take a few minutes. You may also need to trust the developer profile on the watch: **Settings → General → Device Management → Trust**.
+
+### Step 6 — Test Tap Detection
+
+Once the app launches on your Apple Watch:
+
+1. Rest your wrist on a flat surface (table or desk)
+2. **Single tap** the surface near the watch — you should see "Single Tap"
+3. **Double tap** quickly — you should see "Double Tap"
+4. **Tap and hold** your finger down — you should see "Long Tap"
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Watch not appearing in Xcode | Make sure iPhone is connected via USB and watch is paired. Restart Xcode. |
+| "Untrusted Developer" on watch | Go to **Settings → General → Device Management** on the watch and trust your profile. |
+| No tap events detected | Try adjusting `threshold` lower (e.g. `1.0`) — sensitivity varies by surface. |
+| Too many false positives | Increase `threshold` (e.g. `2.0`) or increase `lockoutInterval` (e.g. `0.150`). |
+| App crashes on launch | Ensure `NSMotionUsageDescription` is set in `Info.plist`. |
+
 ## License
 
 MIT
