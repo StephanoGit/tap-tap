@@ -5,13 +5,26 @@ No machine learning — just IMU filtering, peak detection, and a minimal state 
 
 ## Events
 
+### Tap Events
+
 | Event | Description |
 |-------|-------------|
 | `singleTap` | One distinct tap on a surface |
 | `doubleTap` | Two taps within a configurable time window |
 | `longTap` | A tap followed by sustained low-motion hold |
 
+### Swipe Events
+
+| Event | Description |
+|-------|-------------|
+| `swipeLeft` | Horizontal swipe toward the left |
+| `swipeRight` | Horizontal swipe toward the right |
+| `swipeUp` | Vertical swipe upward |
+| `swipeDown` | Vertical swipe downward |
+
 ## How It Works
+
+### Tap Detection
 
 ```
 IMU stream → magnitude → peak detection → lockout → state machine → events
@@ -21,6 +34,17 @@ IMU stream → magnitude → peak detection → lockout → state machine → ev
 2. **Peak detection** — magnitude exceeds a configurable threshold.
 3. **Lockout** — ignores ringing oscillations for ~120 ms after a peak.
 4. **State machine** — classifies peaks into single, double, or long taps.
+
+### Swipe Detection
+
+```
+IMU stream → axis activation → velocity integration → direction classification → events
+```
+
+1. **Activation** — any single axis exceeds a configurable threshold (default 0.4g).
+2. **Tracking** — integrates per-axis acceleration into velocity using the trapezoidal rule.
+3. **Completion** — triggered by deceleration (sign change) or timeout.
+4. **Classification** — dominant axis determines direction; rejects diagonal and z-axis motion.
 
 ## Quick Start
 
@@ -36,8 +60,8 @@ Then use it with CoreMotion:
 import TapTap
 import CoreMotion
 
-let detector = TapDetector()
-detector.onTap = { event in
+let tapDetector = TapDetector()
+tapDetector.onTap = { event in
     switch event {
     case .singleTap:  print("tap")
     case .doubleTap:  print("double tap")
@@ -45,8 +69,24 @@ detector.onTap = { event in
     }
 }
 
+let swipeDetector = SwipeDetector()
+swipeDetector.onSwipe = { event in
+    switch event {
+    case .swipe(.left):   print("swipe left")
+    case .swipe(.right):  print("swipe right")
+    case .swipe(.up):     print("swipe up")
+    case .swipe(.down):   print("swipe down")
+    }
+}
+
 // Feed samples from CMMotionManager.deviceMotionUpdates
-detector.processSample(
+tapDetector.processSample(
+    x: motion.userAcceleration.x,
+    y: motion.userAcceleration.y,
+    z: motion.userAcceleration.z,
+    timestamp: motion.timestamp
+)
+swipeDetector.processSample(
     x: motion.userAcceleration.x,
     y: motion.userAcceleration.y,
     z: motion.userAcceleration.z,
@@ -56,6 +96,8 @@ detector.processSample(
 
 ## Configuration
 
+### Tap Detector
+
 ```swift
 let config = TapDetectorConfig(
     threshold: 1.5,            // magnitude in g
@@ -64,7 +106,20 @@ let config = TapDetectorConfig(
     longTapHoldDuration: 0.500,// seconds
     longTapVarianceThreshold: 0.05
 )
-let detector = TapDetector(config: config)
+let tapDetector = TapDetector(config: config)
+```
+
+### Swipe Detector
+
+```swift
+let config = SwipeDetectorConfig(
+    activationThreshold: 0.4,  // single-axis acceleration in g
+    maxSwipeDuration: 0.500,   // seconds
+    axisRatio: 1.5,            // dominant vs secondary axis ratio
+    minDisplacement: 0.06,     // minimum integrated velocity
+    cooldown: 0.300            // seconds between swipes
+)
+let swipeDetector = SwipeDetector(config: config)
 ```
 
 ## Running on Apple Watch Series 7
@@ -130,6 +185,9 @@ struct ContentView: View {
 
             Text("Tap count: \(viewModel.tapCount)")
                 .font(.caption)
+
+            Text("Swipe count: \(viewModel.swipeCount)")
+                .font(.caption)
         }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }
@@ -139,19 +197,33 @@ struct ContentView: View {
 class TapViewModel: ObservableObject {
     @Published var lastEvent = "Waiting…"
     @Published var tapCount = 0
+    @Published var swipeCount = 0
 
     private let motionManager = CMMotionManager()
-    private let detector = TapDetector()
+    private let tapDetector = TapDetector()
+    private let swipeDetector = SwipeDetector()
     private let queue = OperationQueue()
 
     init() {
-        detector.onTap = { [weak self] event in
+        tapDetector.onTap = { [weak self] event in
             DispatchQueue.main.async {
                 self?.tapCount += 1
                 switch event {
                 case .singleTap:  self?.lastEvent = "Single Tap"
                 case .doubleTap:  self?.lastEvent = "Double Tap"
                 case .longTap:    self?.lastEvent = "Long Tap"
+                }
+            }
+        }
+
+        swipeDetector.onSwipe = { [weak self] event in
+            DispatchQueue.main.async {
+                self?.swipeCount += 1
+                switch event {
+                case .swipe(.left):   self?.lastEvent = "Swipe Left ←"
+                case .swipe(.right):  self?.lastEvent = "Swipe Right →"
+                case .swipe(.up):     self?.lastEvent = "Swipe Up ↑"
+                case .swipe(.down):   self?.lastEvent = "Swipe Down ↓"
                 }
             }
         }
@@ -164,13 +236,13 @@ class TapViewModel: ObservableObject {
         }
         motionManager.deviceMotionUpdateInterval = 1.0 / 100.0  // 100 Hz
         motionManager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
-            guard let motion else { return }
-            self?.detector.processSample(
-                x: motion.userAcceleration.x,
-                y: motion.userAcceleration.y,
-                z: motion.userAcceleration.z,
-                timestamp: motion.timestamp
-            )
+            guard let self, let motion else { return }
+            let x = motion.userAcceleration.x
+            let y = motion.userAcceleration.y
+            let z = motion.userAcceleration.z
+            let t = motion.timestamp
+            self.tapDetector.processSample(x: x, y: y, z: z, timestamp: t)
+            self.swipeDetector.processSample(x: x, y: y, z: z, timestamp: t)
         }
     }
 
@@ -191,7 +263,7 @@ class TapViewModel: ObservableObject {
 
 > **First-time setup:** If this is your first time deploying to the watch, Xcode may need to prepare the device. This can take a few minutes. You may also need to trust the developer profile on the watch: **Settings → General → Device Management → Trust**.
 
-### Step 6 — Test Tap Detection
+### Step 6 — Test Tap and Swipe Detection
 
 Once the app launches on your Apple Watch:
 
@@ -199,6 +271,10 @@ Once the app launches on your Apple Watch:
 2. **Single tap** the surface near the watch — you should see "Single Tap"
 3. **Double tap** quickly — you should see "Double Tap"
 4. **Tap and hold** your finger down — you should see "Long Tap"
+5. **Swipe your wrist left** — you should see "Swipe Left ←"
+6. **Swipe your wrist right** — you should see "Swipe Right →"
+7. **Flick your wrist up** — you should see "Swipe Up ↑"
+8. **Flick your wrist down** — you should see "Swipe Down ↓"
 
 ### Troubleshooting
 
@@ -208,6 +284,8 @@ Once the app launches on your Apple Watch:
 | "Untrusted Developer" on watch | Go to **Settings → General → Device Management** on the watch and trust your profile. |
 | No tap events detected | Try adjusting `threshold` lower (e.g. `1.0`) — sensitivity varies by surface. |
 | Too many false positives | Increase `threshold` (e.g. `2.0`) or increase `lockoutInterval` (e.g. `0.150`). |
+| Swipes not detected | Lower `activationThreshold` (e.g. `0.3`) or decrease `minDisplacement` (e.g. `0.04`). |
+| Diagonal swipes triggering | Increase `axisRatio` (e.g. `2.0`) to require more directional motion. |
 | App crashes on launch | Ensure `NSMotionUsageDescription` is set in `Info.plist`. |
 
 ## License
