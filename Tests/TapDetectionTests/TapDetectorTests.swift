@@ -129,39 +129,48 @@ final class TapDetectorTests: XCTestCase {
         var events: [TapEvent] = []
         detector.onEvent = { events.append($0) }
 
-        // Initial spike
+        // 1. Spike at t=0 → enters waitingForSecondTap
         _ = spike(detector, at: 0)
         XCTAssertEqual(detector.state, .waitingForSecondTap)
 
-        // Simulate double-tap window expiring by flushing → enters longTapMonitoring
-        // We manually transition by calling flush which won't fire since we need
-        // the DispatchQueue path. Instead, use processSampleSync path.
-        // After the double-tap window, send quiet samples for hold duration.
+        // 2. Double-tap window expires → enter longTapMonitoring
+        let entered = detector.enterLongTapMonitoringIfReady(currentTime: 0.400)
+        XCTAssertTrue(entered)
+        XCTAssertEqual(detector.state, .longTapMonitoring)
 
-        // Since the sync path doesn't use DispatchQueue, we manually transition.
-        // First tap at t=0, no second tap → at t=0.350 the window expires.
-        // The sync path keeps state as .waitingForSecondTap.
-        // A new spike at t=0.500 would be outside the window → emits singleTap.
-        // For long-tap, we need explicit DispatchQueue or manual state.
+        // 3. Send quiet samples for the hold duration (0.500 s)
+        let holdStart = 0.400
+        let sampleInterval = 0.010 // 100 Hz
+        var t = holdStart + sampleInterval
+        while t < holdStart + 0.500 {
+            _ = quiet(detector, at: t)
+            t += sampleInterval
+        }
+        XCTAssertTrue(events.isEmpty, "Long tap should not fire before hold duration")
 
-        // Let's test long tap by manually entering the monitoring state:
-        detector.reset()
-        events.removeAll()
+        // 4. Final sample at/past hold duration → emits longTap
+        _ = quiet(detector, at: holdStart + 0.500)
+        XCTAssertEqual(events, [.longTap])
+        XCTAssertEqual(detector.state, .idle)
+    }
 
-        // Use the processSampleSync path and manually flush into longTapMonitoring.
-        _ = spike(detector, at: 1.0)
-        // Manually flush to trigger single tap decision — but we want long tap.
-        // The current sync API emits singleTap on flush. Long tap requires
-        // the async path. Let's verify the hold-monitoring logic directly.
+    func testLongTapAbortedBySpikeEmitsDoubleTap() {
+        let detector = makeDetector(
+            doubleTapWindow: 0.350,
+            longTapHoldThreshold: 0.3,
+            longTapHoldDuration: 0.500
+        )
+        var events: [TapEvent] = []
+        detector.onEvent = { events.append($0) }
 
-        // Manually set state for testability:
-        detector.reset()
-        events.removeAll()
+        // Spike → wait → enter monitoring
+        _ = spike(detector, at: 0)
+        _ = detector.enterLongTapMonitoringIfReady(currentTime: 0.400)
 
-        // Spike, then flush to get singleTap. Long-tap is an async feature.
-        _ = spike(detector, at: 2.0)
-        let flushed = detector.flushPendingSingleTap(currentTime: 2.400)
-        XCTAssertEqual(flushed, .singleTap)
+        // Spike during hold → interpreted as second tap → doubleTap
+        _ = spike(detector, at: 0.500)
+        XCTAssertEqual(events, [.doubleTap])
+        XCTAssertEqual(detector.state, .idle)
     }
 
     // MARK: - Reset

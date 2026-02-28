@@ -201,6 +201,30 @@ public final class TapDetector {
         return event
     }
 
+    /// Transitions from ``State/waitingForSecondTap`` into
+    /// ``State/longTapMonitoring`` when the double-tap window has elapsed
+    /// without a second tap.
+    ///
+    /// This is the synchronous equivalent of the `DispatchQueue` timeout
+    /// used by ``processSample(x:y:z:timestamp:)``. Call this from tests
+    /// or from a manual timer to enter long-tap hold monitoring.
+    ///
+    /// - Parameter currentTime: The current monotonic timestamp.
+    /// - Returns: `true` if the transition occurred.
+    @discardableResult
+    public func enterLongTapMonitoringIfReady(currentTime: Double) -> Bool {
+        guard let first = firstTapTime,
+              currentTime - first >= configuration.doubleTapWindow,
+              state == .waitingForSecondTap else {
+            return false
+        }
+        firstTapTime = nil
+        state = .longTapMonitoring
+        holdStartTime = currentTime
+        holdBuffer.removeAll()
+        return true
+    }
+
     // MARK: - Private Helpers
 
     private func processSampleSyncInternal(x: Double, y: Double, z: Double, timestamp: Double) {
