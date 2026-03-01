@@ -1,19 +1,19 @@
 ( function () {
-  var options = ['Pizza', 'Burger', 'Ramen'];
-  var bgClasses = ['bg-pizza', 'bg-burger', 'bg-ramen'];
-  var currentIndex = 0;
-  var selectedOption = null;
-  var confirmed = false;
+  const options = ['Pizza', 'Burger', 'Ramen'];
+  const bgClasses = ['bg-pizza', 'bg-burger', 'bg-ramen'];
+  let currentIndex = 0;
+  let selectedOption = null;
+  let confirmed = false;
 
-  var body = document.body;
-  var optionDisplay = document.getElementById('option-display');
-  var statusEl = document.getElementById('status');
+  const body = document.body;
+  const optionDisplay = document.getElementById('option-display');
+  const statusEl = document.getElementById('status');
 
-  var DOUBLE_TAP_DELAY = 300;
-  var singleTapTimer = null;
+  const DOUBLE_TAP_DELAY = 300; // milliseconds to wait for second tap
+  let singleTapTimer = null;
 
-  var touchStartY = 0;
-  var SWIPE_THRESHOLD = 50;
+  let touchStartY = 0;
+  const SWIPE_THRESHOLD = 50; // minimum vertical distance in pixels to detect a swipe
 
   function clearBgClasses() {
     body.classList.remove('bg-pizza', 'bg-burger', 'bg-ramen', 'bg-selected', 'bg-confirmed');
@@ -50,7 +50,7 @@
     body.classList.add('bg-confirmed');
     optionDisplay.textContent = selectedOption + ' sent';
     statusEl.textContent = '';
-    var instructions = document.getElementById('instructions');
+    const instructions = document.getElementById('instructions');
     if (instructions) instructions.style.display = 'none';
   }
 
@@ -63,8 +63,8 @@
   body.addEventListener('touchend', function (e) {
     if (confirmed) return;
 
-    var touchEndY = e.changedTouches[0].clientY;
-    var deltaY = touchStartY - touchEndY;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchStartY - touchEndY;
 
     /* Swipe up detected */
     if (deltaY > SWIPE_THRESHOLD) {
@@ -93,7 +93,7 @@
 
   /* ---------- Mouse fallback for desktop testing ---------- */
 
-  var mouseDownY = 0;
+  let mouseDownY = 0;
 
   body.addEventListener('mousedown', function (e) {
     mouseDownY = e.clientY;
@@ -102,7 +102,7 @@
   body.addEventListener('mouseup', function (e) {
     if (confirmed) return;
 
-    var deltaY = mouseDownY - e.clientY;
+    const deltaY = mouseDownY - e.clientY;
 
     if (deltaY > SWIPE_THRESHOLD) {
       if (singleTapTimer) {
