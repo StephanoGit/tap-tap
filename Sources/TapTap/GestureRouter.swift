@@ -45,7 +45,8 @@ public final class GestureRouter {
     /// - `"doubleTap"` → `sendSelected()`
     /// - `"singleTap"` → prints the selected index
     ///
-    /// Also invokes the ``onGesture`` callback if set.
+    /// After handling, pushes updated reply state to the watch via
+    /// ``PhoneSessionManager`` and invokes the ``onGesture`` callback.
     ///
     /// - Parameter gesture: The gesture identifier (e.g. `"singleTap"`).
     public func handle(_ gesture: String) {

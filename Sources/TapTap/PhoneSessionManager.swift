@@ -25,6 +25,23 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Push the current reply state to the paired Apple Watch.
+    ///
+    /// Sends `["replies": [...], "selectedIndex": Int]` via `sendMessage`.
+    /// Call this whenever ``ReplyManager/replies`` or
+    /// ``ReplyManager/selectedIndex`` changes.
+    public func pushReplyState() {
+        guard WCSession.default.isReachable else { return }
+        let state: [String: Any] = [
+            "replies": ReplyManager.shared.replies,
+            "selectedIndex": ReplyManager.shared.selectedIndex
+        ]
+        print("📱 Pushing reply state to watch: \(state)")
+        WCSession.default.sendMessage(state, replyHandler: nil) { error in
+            print("📱 Failed to push reply state: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - WCSessionDelegate
 
     public func session(

@@ -364,38 +364,23 @@ Once the app launches on your Apple Watch:
 
 The library includes `WatchSessionManager` (watchOS) and `PhoneSessionManager` (iOS) for sending detected gestures from the Apple Watch to the paired iPhone via WatchConnectivity.
 
-### iPhone App Setup
+### iPhone App Setup (`taptaptapApp.swift`)
 
-In your iPhone app entry point, activate `PhoneSessionManager` and handle incoming gestures via `GestureRouter`:
+In your iPhone app entry point, activate `PhoneSessionManager` and use `PhoneContentView` to display reply cards:
 
 ```swift
 import SwiftUI
 import TapTap
 
 @main
-struct MyPhoneApp: App {
+struct taptaptapApp: App {
     init() {
         _ = PhoneSessionManager.shared
-
-        GestureRouter.shared.onGesture = { gesture in
-            DispatchQueue.main.async {
-                switch gesture {
-                case "singleTap":  print("Watch: single tap")
-                case "doubleTap":  print("Watch: double tap")
-                case "longTap":    print("Watch: long tap")
-                case "swipeLeft":  print("Watch: swipe left")
-                case "swipeRight": print("Watch: swipe right")
-                case "swipeUp":    print("Watch: swipe up")
-                case "swipeDown":  print("Watch: swipe down")
-                default:           break
-                }
-            }
-        }
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            PhoneContentView()
                 .onOpenURL { url in
                     ReplyManager.shared.handleURL(url)
                 }
@@ -404,7 +389,52 @@ struct MyPhoneApp: App {
 }
 ```
 
-The watch app code (Step 4 above) already calls `WatchSessionManager.shared.send()` for all 7 gestures. The iPhone receives them via `PhoneSessionManager` → `GestureRouter.shared.onGesture`.
+`PhoneContentView` automatically:
+- Displays 3 reply cards loaded via `.onOpenURL`
+- Highlights the selected reply card in blue
+- Shows "Sent!" briefly when `doubleTap` fires
+- Polls `ReplyManager.shared` via a 0.1s Timer
+- Pushes reply state to the watch after each gesture
+- Wires up `GestureRouter.shared.onGesture` for UI feedback
+
+**Gesture routing** (handled automatically by `GestureRouter.handle()`):
+- `"swipeUp"` → `ReplyManager.shared.selectPrevious()`
+- `"swipeDown"` → `ReplyManager.shared.selectNext()`
+- `"swipeLeft"` → `ReplyManager.shared.reset()`
+- `"doubleTap"` → `ReplyManager.shared.sendSelected()`
+- `"singleTap"` → prints `Selected index: <n>`
+
+### Watch App Setup
+
+In your Watch app entry point, use `WatchContentView`:
+
+```swift
+import SwiftUI
+import TapTap
+
+@main
+struct TapTapWatchApp: App {
+    init() {
+        _ = WatchSessionManager.shared
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            WatchContentView()
+        }
+    }
+}
+```
+
+`WatchContentView` automatically:
+- Shows the current reply text large and centered
+- Shows an index indicator ("1 / 3") at the bottom
+- Dark grey background normally
+- Blue flash when `singleTap` is received (selection confirmation)
+- Green flash when `doubleTap` is received (sent confirmation)
+- Shows "Waiting..." when no replies are loaded
+
+The watch app code (Step 4 above) sends gestures via `WatchSessionManager.shared.send()` for all 7 gestures. The iPhone receives them via `PhoneSessionManager` → `GestureRouter` → `ReplyManager`, then pushes updated reply state back to the watch.
 
 ## License
 
