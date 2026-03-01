@@ -140,12 +140,12 @@ public final class WatchReplyViewModel: ObservableObject {
 
     private func handleGestureAck(_ gesture: String) {
         switch gesture {
-        case "singleTap":
+        case "doubleTap":
             isSelected = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 self?.isSelected = false
             }
-        case "doubleTap":
+        case "swipeUp":
             showSentConfirmation = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.showSentConfirmation = false

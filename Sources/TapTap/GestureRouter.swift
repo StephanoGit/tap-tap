@@ -39,10 +39,10 @@ public final class GestureRouter {
     /// Handle an incoming gesture string.
     ///
     /// Routes gestures to ``ReplyManager/shared`` actions:
-    /// - `"swipeUp"` → `selectPrevious()`
-    /// - `"swipeDown"` → `selectNext()`
+    /// - `"doubleTap"` → `selectNext()` (double-tap to select/cycle)
+    /// - `"swipeUp"` → `sendSelected()` (swipe up to confirm/send)
+    /// - `"swipeDown"` → `selectPrevious()`
     /// - `"swipeLeft"` → `reset()`
-    /// - `"doubleTap"` → `sendSelected()`
     /// - `"singleTap"` → prints the selected index
     ///
     /// After handling, immediately pushes updated reply state to the watch
@@ -51,14 +51,14 @@ public final class GestureRouter {
     /// - Parameter gesture: The gesture identifier (e.g. `"singleTap"`).
     public func handle(_ gesture: String) {
         switch gesture {
-        case "swipeUp":
-            ReplyManager.shared.selectPrevious()
-        case "swipeDown":
+        case "doubleTap":
             ReplyManager.shared.selectNext()
+        case "swipeUp":
+            ReplyManager.shared.sendSelected()
+        case "swipeDown":
+            ReplyManager.shared.selectPrevious()
         case "swipeLeft":
             ReplyManager.shared.reset()
-        case "doubleTap":
-            ReplyManager.shared.sendSelected()
         case "singleTap":
             print("Selected index: \(ReplyManager.shared.selectedIndex)")
         default:

@@ -163,7 +163,7 @@ public final class PhoneReplyViewModel: ObservableObject {
 
     private func handleGesture(_ gesture: String) {
         switch gesture {
-        case "doubleTap":
+        case "swipeUp":
             showSentConfirmation = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.showSentConfirmation = false
