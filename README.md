@@ -398,11 +398,10 @@ struct taptaptapApp: App {
 - Wires up `GestureRouter.shared.onGesture` for UI feedback
 
 **Gesture routing** (handled automatically by `GestureRouter.handle()`):
-- `"swipeUp"` → `ReplyManager.shared.selectPrevious()`
-- `"swipeDown"` → `ReplyManager.shared.selectNext()`
+- `"singleTap"` or `"doubleTap"` → `ReplyManager.shared.selectNext()` (advance to the next reply)
+- `"swipeUp"` → `ReplyManager.shared.sendSelected()` (confirm/send)
+- `"swipeDown"` → `ReplyManager.shared.selectPrevious()`
 - `"swipeLeft"` → `ReplyManager.shared.reset()`
-- `"doubleTap"` → `ReplyManager.shared.sendSelected()`
-- `"singleTap"` → prints `Selected index: <n>`
 
 ### Watch App Setup
 
@@ -430,8 +429,8 @@ struct TapTapWatchApp: App {
 - Shows the current reply text large and centered
 - Shows an index indicator ("1 / 3") at the bottom
 - Dark grey background normally
-- Blue flash when `singleTap` is received (selection confirmation)
-- Green flash when `doubleTap` is received (sent confirmation)
+- Blue flash when `singleTap` (or `doubleTap`) is received – the watch will step to the next reply
+- Green flash when `doubleTap` (or `swipeUp`) is received to indicate a send confirmation
 - Shows "Waiting..." when no replies are loaded
 
 The watch app code (Step 4 above) sends gestures via `WatchSessionManager.shared.send()` for all 7 gestures. The iPhone receives them via `PhoneSessionManager` → `GestureRouter` → `ReplyManager`, then pushes updated reply state back to the watch.

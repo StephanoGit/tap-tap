@@ -51,7 +51,10 @@ public final class GestureRouter {
     /// - Parameter gesture: The gesture identifier (e.g. `"singleTap"`).
     public func handle(_ gesture: String) {
         switch gesture {
-        case "singleTap":
+        case "singleTap", "doubleTap":
+            // both tap variants cycle to the next reply so that the watch UI
+            // always advances regardless of whether the user single‑ or
+            // double‑taps the screen.
             ReplyManager.shared.selectNext()
         case "swipeUp":
             ReplyManager.shared.sendSelected()
@@ -59,15 +62,14 @@ public final class GestureRouter {
             ReplyManager.shared.selectPrevious()
         case "swipeLeft":
             ReplyManager.shared.reset()
-        case "doubleTap":
-            print("Selected index: \(ReplyManager.shared.selectedIndex)")
         default:
             break
         }
 
-        // Push updated state to watch immediately
+        // Push updated state to watch immediately, including a gesture
+        // acknowledgement so the watch can display feedback.
         #if os(iOS)
-        PhoneSessionManager.shared.pushReplyState()
+        PhoneSessionManager.shared.pushReplyState(gestureAck: gesture)
         #endif
 
         onGesture?(gesture)

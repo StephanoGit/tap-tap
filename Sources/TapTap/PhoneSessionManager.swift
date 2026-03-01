@@ -33,11 +33,22 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
     ///
     /// Call this whenever ``ReplyManager/replies`` or
     /// ``ReplyManager/selectedIndex`` changes.
-    public func pushReplyState() {
-        let state: [String: Any] = [
+    /// Push the current reply state to the paired Apple Watch.
+    ///
+    /// After handling a gesture incoming from the watch we also include an
+    /// optional `gestureAck` string; the watch uses that to flash the
+    /// background and display a short label so the user can see that their tap
+    /// actually went through. The method returns the dictionary that was sent
+    /// so it can be inspected in unit tests.
+    @discardableResult
+    public func pushReplyState(gestureAck: String? = nil) -> [String: Any] {
+        var state: [String: Any] = [
             "replies": ReplyManager.shared.replies,
             "selectedIndex": ReplyManager.shared.selectedIndex
         ]
+        if let ack = gestureAck {
+            state["gestureAck"] = ack
+        }
         print("📱 Pushing reply state to watch: \(state)")
 
         // Immediate delivery when reachable
@@ -53,6 +64,8 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
         } catch {
             print("📱 Failed to update application context: \(error.localizedDescription)")
         }
+
+        return state
     }
 
     // MARK: - WCSessionDelegate

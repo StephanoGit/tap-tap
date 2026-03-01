@@ -6,8 +6,10 @@ import SwiftUI
 /// - Receives reply state from ``WatchSessionManager``
 /// - Shows current reply text large and centered
 /// - Index indicator "1 / 3" at bottom
-/// - Dark grey background normally, red when singleTap received (cycling)
-/// - Brief green flash when swipeUp received (sent confirmation)
+/// - Dark grey background normally
+/// - Blue flash & "Tap" label when a tap gesture is registered
+/// - Green flash & "Double Tap" label when a double tap is registered
+/// - "Sent!" overlay for send confirmations (double tap/swipe up)
 /// - "Waiting..." when replies is empty
 ///
 /// Usage in the Watch App entry point:
@@ -58,7 +60,7 @@ public struct WatchContentView: View {
                 }
             }
 
-            // "Sent!" overlay
+            // "Sent!" overlay (used for send confirmations)
             if viewModel.showSentConfirmation {
                 Text("✓ Sent")
                     .font(.headline)
@@ -68,7 +70,28 @@ public struct WatchContentView: View {
                     .background(Color.green.opacity(0.9))
                     .cornerRadius(10)
             }
+
+            // Feedback label for tap/double‑tap gestures
+            if let label = viewModel.gestureLabel {
+                Text(label)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.6))
+                    .cornerRadius(10)
+            }
         }
+        // support screen taps so the watch can drive the reply index locally
+        .gesture(
+            TapGesture(count: 2)
+                .onEnded { _ in
+                    viewModel.handleLocalGesture("doubleTap")
+                }
+                // single‑tap handler runs if the double‑tap fails
+                .exclusively(before: TapGesture().onEnded { _ in
+                    viewModel.handleLocalGesture("singleTap")
+                })
     }
 }
 
@@ -80,7 +103,10 @@ public final class WatchReplyViewModel: ObservableObject {
     @Published public var replies: [String] = []
     @Published public var selectedIndex: Int = 0
     @Published public var showSentConfirmation: Bool = false
-    @Published public var isSelected: Bool = false
+
+    /// Label to display temporarily when a gesture occurs ("Tap", "Double Tap",
+    /// "Sent!", etc.). Nil when nothing should be shown.
+    @Published public var gestureLabel: String?
 
     /// The current reply text to display.
     public var currentReply: String {
@@ -88,10 +114,18 @@ public final class WatchReplyViewModel: ObservableObject {
         return replies[selectedIndex]
     }
 
-    /// Background color based on state.
+    /// Background color based on state or recent gesture.
     public var backgroundColor: Color {
+        // send confirmation (double‑tap or swipeUp)
         if showSentConfirmation { return .green.opacity(0.3) }
-        if isSelected { return .red.opacity(0.4) }
+        // feedback from the last gesture label
+        if let label = gestureLabel {
+            switch label {
+            case "Tap": return .blue.opacity(0.4)
+            case "Double Tap": return .green.opacity(0.4)
+            default: break
+            }
+        }
         return Color(white: 0.15)
     }
 
@@ -138,20 +172,60 @@ public final class WatchReplyViewModel: ObservableObject {
         }
     }
 
-    private func handleGestureAck(_ gesture: String) {
+    /// Handle a gesture acknowledgement coming from the phone. This is called
+    /// indirectly via ``WatchSessionManager/onGestureAck``. We use the same
+    /// styling logic for local gestures (see ``handleLocalGesture(_:)``) so the
+    /// user sees feedback even if the phone takes a moment to respond.
+    func handleGestureAck(_ gesture: String) {
         switch gesture {
         case "singleTap":
-            isSelected = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.isSelected = false
+            gestureLabel = "Tap"
+            clearGestureLabel(after: 1.0)
+        case "doubleTap":
+            gestureLabel = "Double Tap"
+            showSentConfirmation = true
+            clearGestureLabel(after: 1.5)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.showSentConfirmation = false
             }
         case "swipeUp":
+            // older behaviour – keep for compatibility
+            gestureLabel = "Sent!"
             showSentConfirmation = true
+            clearGestureLabel(after: 1.5)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.showSentConfirmation = false
             }
         default:
             break
+        }
+    }
+
+    /// Called by the view when the user taps/double‑taps the screen. The
+    /// gesture is forwarded to the phone and we also update local state
+    /// immediately so the UI feels snappy even if the phone is slow or
+    /// unreachable.
+    func handleLocalGesture(_ gesture: String) {
+        // local selection logic for tap (cycles replies)
+        switch gesture {
+        case "singleTap":
+            if !replies.isEmpty {
+                selectedIndex = min(selectedIndex + 1, replies.count - 1)
+            }
+        default:
+            break
+        }
+
+        // show the same feedback as an acknowledgement
+        handleGestureAck(gesture)
+
+        // forward to phone
+        WatchSessionManager.shared.send(gesture)
+    }
+
+    private func clearGestureLabel(after delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.gestureLabel = nil
         }
     }
 }
