@@ -37,6 +37,15 @@ public final class ReplyManager {
     /// The index of the currently selected reply.
     public private(set) var selectedIndex: Int = 0
 
+    /// Set the selected index directly (clamped to valid range).
+    ///
+    /// Use this for tap-to-select on iPhone. For sequential navigation,
+    /// prefer ``selectNext()`` and ``selectPrevious()``.
+    public func setSelectedIndex(_ index: Int) {
+        guard !replies.isEmpty else { return }
+        selectedIndex = max(0, min(index, replies.count - 1))
+    }
+
     /// The currently selected reply string, or `nil` if replies is empty.
     public var selectedReply: String? {
         guard !replies.isEmpty else { return nil }

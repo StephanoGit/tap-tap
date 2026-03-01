@@ -71,12 +71,20 @@ public final class WatchSessionManager: NSObject, WCSessionDelegate {
 
     /// Send a gesture string to the paired iPhone.
     ///
+    /// On watchOS, `sendMessage` wakes up the iOS companion app even when
+    /// it is not in the foreground, so no reachability guard is needed.
+    ///
     /// - Parameter gesture: One of `"singleTap"`, `"doubleTap"`, `"longTap"`,
     ///   `"swipeUp"`, `"swipeDown"`, `"swipeLeft"`, `"swipeRight"`.
     public func send(_ gesture: String) {
-        guard WCSession.default.isReachable else { return }
+        guard WCSession.default.activationState == .activated else {
+            print("⌚ Session not activated, dropping gesture: \(gesture)")
+            return
+        }
         print("⌚ Sending gesture: \(gesture)")
-        WCSession.default.sendMessage([Self.gestureKey: gesture], replyHandler: nil, errorHandler: nil)
+        WCSession.default.sendMessage([Self.gestureKey: gesture], replyHandler: nil) { error in
+            print("⌚ Failed to send gesture \(gesture): \(error.localizedDescription)")
+        }
     }
 
     // MARK: - WCSessionDelegate

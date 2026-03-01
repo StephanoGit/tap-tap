@@ -59,8 +59,11 @@ public struct PhoneContentView: View {
                     ForEach(Array(viewModel.replies.enumerated()), id: \.offset) { index, reply in
                         ReplyCard(
                             text: reply,
-                            isSelected: index == viewModel.selectedIndex
-                        )
+                            isSelected: index == viewModel.selectedIndex,
+                            index: index
+                        ) { tappedIndex in
+                            viewModel.selectReply(at: tappedIndex)
+                        }
                     }
                     Spacer()
                 }
@@ -91,6 +94,8 @@ public struct PhoneContentView: View {
 struct ReplyCard: View {
     let text: String
     let isSelected: Bool
+    let index: Int
+    var onTap: ((Int) -> Void)?
 
     var body: some View {
         HStack {
@@ -104,6 +109,9 @@ struct ReplyCard: View {
         .background(isSelected ? Color.blue : Color.gray.opacity(0.3))
         .cornerRadius(12)
         .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .onTapGesture {
+            onTap?(index)
+        }
     }
 }
 
@@ -154,9 +162,6 @@ public final class PhoneReplyViewModel: ObservableObject {
     }
 
     private func handleGesture(_ gesture: String) {
-        // Push updated state to watch after each gesture
-        PhoneSessionManager.shared.pushReplyState()
-
         switch gesture {
         case "doubleTap":
             showSentConfirmation = true
@@ -166,6 +171,14 @@ public final class PhoneReplyViewModel: ObservableObject {
         default:
             break
         }
+    }
+
+    /// Select a reply by tapping its card on the iPhone.
+    public func selectReply(at index: Int) {
+        ReplyManager.shared.setSelectedIndex(index)
+        // Update local state immediately for responsive UI (also picked up by syncState timer)
+        selectedIndex = ReplyManager.shared.selectedIndex
+        PhoneSessionManager.shared.pushReplyState()
     }
 }
 #endif
