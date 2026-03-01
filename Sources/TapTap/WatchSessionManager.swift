@@ -47,6 +47,11 @@ public final class WatchSessionManager: NSObject, WCSessionDelegate {
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {}
+    ) {
+        print("⌚ Watch session activated: \(activationState.rawValue)")
+        if let error = error {
+            print("⌚ Watch session activation error: \(error.localizedDescription)")
+        }
+    }
 }
 #endif

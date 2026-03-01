@@ -31,7 +31,12 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {}
+    ) {
+        print("📱 Phone session activated: \(activationState.rawValue)")
+        if let error = error {
+            print("📱 Phone session activation error: \(error.localizedDescription)")
+        }
+    }
 
     public func sessionDidBecomeInactive(_ session: WCSession) {}
 
