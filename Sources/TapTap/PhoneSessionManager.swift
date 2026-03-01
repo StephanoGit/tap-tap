@@ -40,6 +40,7 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
     }
 
     public func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        print("📱 Received gesture: \(message)")
         if let gesture = message[GestureRouter.gestureKey] as? String {
             GestureRouter.shared.handle(gesture)
         }

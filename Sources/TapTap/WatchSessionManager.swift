@@ -37,6 +37,7 @@ public final class WatchSessionManager: NSObject, WCSessionDelegate {
     ///   `"swipeUp"`, `"swipeDown"`, `"swipeLeft"`, `"swipeRight"`.
     public func send(_ gesture: String) {
         guard WCSession.default.isReachable else { return }
+        print("⌚ Sending gesture: \(gesture)")
         WCSession.default.sendMessage([Self.gestureKey: gesture], replyHandler: nil, errorHandler: nil)
     }
 
