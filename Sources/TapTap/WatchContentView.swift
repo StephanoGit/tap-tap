@@ -6,8 +6,9 @@ import SwiftUI
 /// - Receives reply state from ``WatchSessionManager``
 /// - Shows current reply text large and centered
 /// - Index indicator "1 / 3" at bottom
-/// - Dark grey background normally, red when singleTap received (cycling)
-/// - Brief green flash when swipeUp received (sent confirmation)
+/// - Dark grey background normally, coloured flash on each gesture:
+///   singleTap → red, doubleTap → blue, longTap → orange,
+///   swipeUp → green, swipeDown → yellow, swipeLeft → purple, swipeRight → cyan
 /// - "Waiting..." when replies is empty
 ///
 /// Usage in the Watch App entry point:
@@ -80,7 +81,7 @@ public final class WatchReplyViewModel: ObservableObject {
     @Published public var replies: [String] = []
     @Published public var selectedIndex: Int = 0
     @Published public var showSentConfirmation: Bool = false
-    @Published public var isSelected: Bool = false
+    @Published public var flashColor: Color? = nil
 
     /// The current reply text to display.
     public var currentReply: String {
@@ -91,7 +92,7 @@ public final class WatchReplyViewModel: ObservableObject {
     /// Background color based on state.
     public var backgroundColor: Color {
         if showSentConfirmation { return .green.opacity(0.3) }
-        if isSelected { return .red.opacity(0.4) }
+        if let flash = flashColor { return flash.opacity(0.4) }
         return Color(white: 0.15)
     }
 
@@ -140,18 +141,28 @@ public final class WatchReplyViewModel: ObservableObject {
 
     private func handleGestureAck(_ gesture: String) {
         switch gesture {
-        case "singleTap":
-            isSelected = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.isSelected = false
-            }
         case "swipeUp":
             showSentConfirmation = true
+            flashColor = .green
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.showSentConfirmation = false
+                self?.flashColor = nil
             }
         default:
-            break
+            let color: Color
+            switch gesture {
+            case "singleTap":   color = .red
+            case "doubleTap":   color = .blue
+            case "longTap":     color = .orange
+            case "swipeDown":   color = .yellow
+            case "swipeLeft":   color = .purple
+            case "swipeRight":  color = .cyan
+            default:            color = .gray
+            }
+            flashColor = color
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.flashColor = nil
+            }
         }
     }
 }
