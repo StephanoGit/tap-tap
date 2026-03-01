@@ -122,6 +122,60 @@ let config = SwipeDetectorConfig(
 let swipeDetector = SwipeDetector(config: config)
 ```
 
+## URL Scheme — Receiving Replies
+
+TapTap includes a `ReplyManager` for handling incoming `taptap://replies` URLs. This lets an external app or webpage send reply data to your app via a custom URL scheme.
+
+### URL Format
+
+```
+taptap://replies?r1=First+Reply&r2=Second+Reply&r3=Third+Reply
+```
+
+### Setup
+
+1. Register `taptap` as a URL scheme in your iPhone app target's `Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>taptap</string>
+        </array>
+    </dict>
+</array>
+```
+
+2. Handle incoming URLs in your SwiftUI app entry point:
+
+```swift
+import SwiftUI
+import TapTap
+
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .onOpenURL { url in
+                    ReplyManager.shared.handleURL(url)
+                }
+        }
+    }
+}
+```
+
+3. Access the parsed replies anywhere in your app:
+
+```swift
+let replies = ReplyManager.shared.replies
+// e.g. ["First Reply", "Second Reply", "Third Reply"]
+```
+
+The `r1`, `r2`, `r3` query parameter values are stored in order. Missing or empty parameters are skipped.
+
 ## Running on Apple Watch Series 7
 
 ### Prerequisites
