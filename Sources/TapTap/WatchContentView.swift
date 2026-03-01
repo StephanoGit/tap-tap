@@ -6,8 +6,8 @@ import SwiftUI
 /// - Receives reply state from ``WatchSessionManager``
 /// - Shows current reply text large and centered
 /// - Index indicator "1 / 3" at bottom
-/// - Dark grey background normally, blue when singleTap received
-/// - Brief green flash when doubleTap received (sent confirmation)
+/// - Dark grey background normally, red when singleTap received (cycling)
+/// - Brief green flash when swipeUp received (sent confirmation)
 /// - "Waiting..." when replies is empty
 ///
 /// Usage in the Watch App entry point:
@@ -91,7 +91,7 @@ public final class WatchReplyViewModel: ObservableObject {
     /// Background color based on state.
     public var backgroundColor: Color {
         if showSentConfirmation { return .green.opacity(0.3) }
-        if isSelected { return .blue.opacity(0.4) }
+        if isSelected { return .red.opacity(0.4) }
         return Color(white: 0.15)
     }
 
@@ -140,7 +140,7 @@ public final class WatchReplyViewModel: ObservableObject {
 
     private func handleGestureAck(_ gesture: String) {
         switch gesture {
-        case "doubleTap":
+        case "singleTap":
             isSelected = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 self?.isSelected = false
