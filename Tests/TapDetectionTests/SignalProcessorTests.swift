@@ -47,20 +47,4 @@ final class SignalProcessorTests: XCTestCase {
         let avg = SignalProcessor.movingAverage(buffer: [100, 1, 2, 3], windowSize: 3)
         XCTAssertEqual(avg, 2, accuracy: 1e-9)
     }
-
-    // MARK: - Variance
-
-    func testVarianceSingleElement() {
-        XCTAssertEqual(SignalProcessor.variance(of: [42]), 0, accuracy: 1e-9)
-    }
-
-    func testVarianceIdenticalElements() {
-        XCTAssertEqual(SignalProcessor.variance(of: [5, 5, 5, 5]), 0, accuracy: 1e-9)
-    }
-
-    func testVarianceKnownValues() {
-        // [1, 2, 3] → mean=2, variance = ((1+0+1)/3) = 0.6667
-        let v = SignalProcessor.variance(of: [1, 2, 3])
-        XCTAssertEqual(v, 2.0 / 3.0, accuracy: 1e-9)
-    }
 }

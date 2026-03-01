@@ -36,16 +36,4 @@ public enum SignalProcessor {
         let slice = buffer.suffix(count)
         return slice.reduce(0, +) / Double(count)
     }
-
-    // MARK: - Variance
-
-    /// Computes the variance of the values in `buffer`.
-    ///
-    /// Used for long-tap hold detection (low variance → still wrist).
-    public static func variance(of buffer: [Double]) -> Double {
-        guard buffer.count > 1 else { return 0 }
-        let mean = buffer.reduce(0, +) / Double(buffer.count)
-        let sumSquares = buffer.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }
-        return sumSquares / Double(buffer.count)
-    }
 }

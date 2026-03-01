@@ -23,28 +23,16 @@ public struct TapDetectorConfiguration: Sendable {
     /// Maximum time (seconds) between two taps to classify them as a double-tap.
     public var doubleTapWindow: Double
 
-    // MARK: - Long-Tap
-
-    /// Maximum magnitude (in g) during the hold phase for it to count as "still".
-    public var longTapHoldThreshold: Double
-
-    /// Minimum hold duration (seconds) after the initial spike to classify as long-tap.
-    public var longTapHoldDuration: Double
-
     /// Creates a configuration with the given parameters.
     public init(
         movingAverageWindow: Int = 3,
         tapThreshold: Double = 1.5,
         lockoutDuration: Double = 0.120,
-        doubleTapWindow: Double = 0.350,
-        longTapHoldThreshold: Double = 0.3,
-        longTapHoldDuration: Double = 0.500
+        doubleTapWindow: Double = 0.350
     ) {
         self.movingAverageWindow = movingAverageWindow
         self.tapThreshold = tapThreshold
         self.lockoutDuration = lockoutDuration
         self.doubleTapWindow = doubleTapWindow
-        self.longTapHoldThreshold = longTapHoldThreshold
-        self.longTapHoldDuration = longTapHoldDuration
     }
 }

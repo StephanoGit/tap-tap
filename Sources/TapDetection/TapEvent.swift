@@ -4,6 +4,4 @@ public enum TapEvent: Equatable, Sendable {
     case singleTap
     /// Two taps in quick succession were detected.
     case doubleTap
-    /// A tap followed by sustained contact was detected.
-    case longTap
 }

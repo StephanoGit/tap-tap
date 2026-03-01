@@ -10,7 +10,7 @@ import Foundation
 ///
 /// ```
 /// IMU stream → magnitude → moving average → peak detection
-///            → state machine → events (singleTap / doubleTap / longTap)
+///            → state machine → events (singleTap / doubleTap)
 /// ```
 ///
 /// The detector is **deterministic** and easy to tune at runtime via
@@ -25,8 +25,6 @@ public final class TapDetector {
         case idle
         /// A peak was detected; waiting to see if a second tap follows.
         case waitingForSecondTap
-        /// A spike was detected and we are monitoring for sustained hold.
-        case longTapMonitoring
     }
 
     // MARK: - Public Properties
@@ -50,12 +48,6 @@ public final class TapDetector {
 
     /// Timestamp of the first tap while waiting for a potential double-tap.
     private var firstTapTime: Double?
-
-    /// Ring buffer of magnitudes collected during long-tap hold monitoring.
-    private var holdBuffer: [Double] = []
-
-    /// Timestamp when long-tap hold monitoring started.
-    private var holdStartTime: Double?
 
     /// Pending single-tap work item (cancelled on double-tap).
     private var pendingSingleTap: DispatchWorkItem?
@@ -90,33 +82,6 @@ public final class TapDetector {
             windowSize: configuration.movingAverageWindow
         )
 
-        // --- Long-tap hold monitoring ---
-        if state == .longTapMonitoring {
-            holdBuffer.append(smoothed)
-            if let start = holdStartTime {
-                if smoothed > configuration.tapThreshold {
-                    // Another spike during hold — abort long-tap, treat as second tap.
-                    cancelLongTapMonitoring()
-                    handleDoubleTap(timestamp: timestamp)
-                    return
-                }
-                if timestamp - start >= configuration.longTapHoldDuration {
-                    if allBelowThreshold(holdBuffer, threshold: configuration.longTapHoldThreshold) {
-                        emit(.longTap)
-                        resetState()
-                        return
-                    } else {
-                        // Hold was too noisy — fall back to single tap.
-                        cancelLongTapMonitoring()
-                        emit(.singleTap)
-                        resetState()
-                        return
-                    }
-                }
-            }
-            return
-        }
-
         // --- Lockout check ---
         if timestamp - lastTriggerTime < configuration.lockoutDuration {
             return
@@ -147,16 +112,12 @@ public final class TapDetector {
                 state = .waitingForSecondTap
                 scheduleSingleTapTimeout(tapTime: timestamp)
             }
-
-        case .longTapMonitoring:
-            break // handled above
         }
     }
 
     /// Resets the detector to its initial state, clearing all buffers and timers.
     public func reset() {
         cancelPendingSingleTap()
-        cancelLongTapMonitoring()
         resetState()
         magnitudeBuffer.removeAll()
         lastTriggerTime = -.greatestFiniteMagnitude
@@ -201,30 +162,6 @@ public final class TapDetector {
         return event
     }
 
-    /// Transitions from ``State/waitingForSecondTap`` into
-    /// ``State/longTapMonitoring`` when the double-tap window has elapsed
-    /// without a second tap.
-    ///
-    /// This is the synchronous equivalent of the `DispatchQueue` timeout
-    /// used by ``processSample(x:y:z:timestamp:)``. Call this from tests
-    /// or from a manual timer to enter long-tap hold monitoring.
-    ///
-    /// - Parameter currentTime: The current monotonic timestamp.
-    /// - Returns: `true` if the transition occurred.
-    @discardableResult
-    public func enterLongTapMonitoringIfReady(currentTime: Double) -> Bool {
-        guard let first = firstTapTime,
-              currentTime - first >= configuration.doubleTapWindow,
-              state == .waitingForSecondTap else {
-            return false
-        }
-        firstTapTime = nil
-        state = .longTapMonitoring
-        holdStartTime = currentTime
-        holdBuffer.removeAll()
-        return true
-    }
-
     // MARK: - Private Helpers
 
     private func processSampleSyncInternal(x: Double, y: Double, z: Double, timestamp: Double) {
@@ -239,31 +176,6 @@ public final class TapDetector {
             buffer: magnitudeBuffer,
             windowSize: configuration.movingAverageWindow
         )
-
-        // --- Long-tap hold monitoring ---
-        if state == .longTapMonitoring {
-            holdBuffer.append(smoothed)
-            if let start = holdStartTime {
-                if smoothed > configuration.tapThreshold {
-                    cancelLongTapMonitoring()
-                    handleDoubleTap(timestamp: timestamp)
-                    return
-                }
-                if timestamp - start >= configuration.longTapHoldDuration {
-                    if allBelowThreshold(holdBuffer, threshold: configuration.longTapHoldThreshold) {
-                        emit(.longTap)
-                        resetState()
-                        return
-                    } else {
-                        cancelLongTapMonitoring()
-                        emit(.singleTap)
-                        resetState()
-                        return
-                    }
-                }
-            }
-            return
-        }
 
         // --- Lockout ---
         if timestamp - lastTriggerTime < configuration.lockoutDuration {
@@ -288,9 +200,6 @@ public final class TapDetector {
                 firstTapTime = timestamp
                 state = .waitingForSecondTap
             }
-
-        case .longTapMonitoring:
-            break
         }
     }
 
@@ -307,24 +216,15 @@ public final class TapDetector {
     private func resetState() {
         state = .idle
         firstTapTime = nil
-        holdBuffer.removeAll()
-        holdStartTime = nil
-    }
-
-    private func cancelLongTapMonitoring() {
-        holdBuffer.removeAll()
-        holdStartTime = nil
     }
 
     private func scheduleSingleTapTimeout(tapTime: Double) {
         cancelPendingSingleTap()
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.firstTapTime == tapTime else { return }
-            // Check if we should enter long-tap monitoring instead.
             self.firstTapTime = nil
-            self.state = .longTapMonitoring
-            self.holdStartTime = tapTime + self.configuration.doubleTapWindow
-            self.holdBuffer.removeAll()
+            self.state = .idle
+            self.emit(.singleTap)
         }
         pendingSingleTap = item
         DispatchQueue.main.asyncAfter(
@@ -336,9 +236,5 @@ public final class TapDetector {
     private func cancelPendingSingleTap() {
         pendingSingleTap?.cancel()
         pendingSingleTap = nil
-    }
-
-    private func allBelowThreshold(_ values: [Double], threshold: Double) -> Bool {
-        values.allSatisfy { $0 <= threshold }
     }
 }

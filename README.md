@@ -8,13 +8,12 @@ Pure signal-processing tap detector for Apple Watch — no ML, no dataset, fully
 IMU stream → magnitude → moving average → peak detection → state machine → events
 ```
 
-Detects three gesture types from raw accelerometer data:
+Detects two gesture types from raw accelerometer data:
 
 | Event | Description |
 |-------|-------------|
 | `singleTap` | One sharp acceleration spike |
 | `doubleTap` | Two taps within a configurable window |
-| `longTap` | Tap followed by sustained low-motion hold |
 
 ## Requirements
 
@@ -34,7 +33,6 @@ detector.onEvent = { event in
     switch event {
     case .singleTap:  print("Tap")
     case .doubleTap:  print("Double tap")
-    case .longTap:    print("Long tap")
     }
 }
 

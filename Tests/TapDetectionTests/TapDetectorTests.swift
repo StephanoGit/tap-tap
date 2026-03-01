@@ -7,17 +7,13 @@ final class TapDetectorTests: XCTestCase {
     private func makeDetector(
         threshold: Double = 1.5,
         lockout: Double = 0.120,
-        doubleTapWindow: Double = 0.350,
-        longTapHoldThreshold: Double = 0.3,
-        longTapHoldDuration: Double = 0.500
+        doubleTapWindow: Double = 0.350
     ) -> TapDetector {
         let config = TapDetectorConfiguration(
             movingAverageWindow: 1, // no smoothing for test predictability
             tapThreshold: threshold,
             lockoutDuration: lockout,
-            doubleTapWindow: doubleTapWindow,
-            longTapHoldThreshold: longTapHoldThreshold,
-            longTapHoldDuration: longTapHoldDuration
+            doubleTapWindow: doubleTapWindow
         )
         return TapDetector(configuration: config)
     }
@@ -118,61 +114,6 @@ final class TapDetectorTests: XCTestCase {
         XCTAssertTrue(events.isEmpty)
     }
 
-    // MARK: - Long Tap
-
-    func testLongTapDetected() {
-        let detector = makeDetector(
-            doubleTapWindow: 0.350,
-            longTapHoldThreshold: 0.3,
-            longTapHoldDuration: 0.500
-        )
-        var events: [TapEvent] = []
-        detector.onEvent = { events.append($0) }
-
-        // 1. Spike at t=0 → enters waitingForSecondTap
-        _ = spike(detector, at: 0)
-        XCTAssertEqual(detector.state, .waitingForSecondTap)
-
-        // 2. Double-tap window expires → enter longTapMonitoring
-        let entered = detector.enterLongTapMonitoringIfReady(currentTime: 0.400)
-        XCTAssertTrue(entered)
-        XCTAssertEqual(detector.state, .longTapMonitoring)
-
-        // 3. Send quiet samples for the hold duration (0.500 s)
-        let holdStart = 0.400
-        let sampleInterval = 0.010 // 100 Hz
-        var t = holdStart + sampleInterval
-        while t < holdStart + 0.500 {
-            _ = quiet(detector, at: t)
-            t += sampleInterval
-        }
-        XCTAssertTrue(events.isEmpty, "Long tap should not fire before hold duration")
-
-        // 4. Final sample at/past hold duration → emits longTap
-        _ = quiet(detector, at: holdStart + 0.500)
-        XCTAssertEqual(events, [.longTap])
-        XCTAssertEqual(detector.state, .idle)
-    }
-
-    func testLongTapAbortedBySpikeEmitsDoubleTap() {
-        let detector = makeDetector(
-            doubleTapWindow: 0.350,
-            longTapHoldThreshold: 0.3,
-            longTapHoldDuration: 0.500
-        )
-        var events: [TapEvent] = []
-        detector.onEvent = { events.append($0) }
-
-        // Spike → wait → enter monitoring
-        _ = spike(detector, at: 0)
-        _ = detector.enterLongTapMonitoringIfReady(currentTime: 0.400)
-
-        // Spike during hold → interpreted as second tap → doubleTap
-        _ = spike(detector, at: 0.500)
-        XCTAssertEqual(events, [.doubleTap])
-        XCTAssertEqual(detector.state, .idle)
-    }
-
     // MARK: - Reset
 
     func testResetClearsState() {
@@ -234,8 +175,6 @@ final class TapDetectorTests: XCTestCase {
         XCTAssertEqual(config.tapThreshold, 1.5)
         XCTAssertEqual(config.lockoutDuration, 0.120)
         XCTAssertEqual(config.doubleTapWindow, 0.350)
-        XCTAssertEqual(config.longTapHoldThreshold, 0.3)
-        XCTAssertEqual(config.longTapHoldDuration, 0.500)
     }
 
     func testCustomConfiguration() {
@@ -243,16 +182,12 @@ final class TapDetectorTests: XCTestCase {
             movingAverageWindow: 5,
             tapThreshold: 2.0,
             lockoutDuration: 0.150,
-            doubleTapWindow: 0.400,
-            longTapHoldThreshold: 0.5,
-            longTapHoldDuration: 0.700
+            doubleTapWindow: 0.400
         )
         XCTAssertEqual(config.movingAverageWindow, 5)
         XCTAssertEqual(config.tapThreshold, 2.0)
         XCTAssertEqual(config.lockoutDuration, 0.150)
         XCTAssertEqual(config.doubleTapWindow, 0.400)
-        XCTAssertEqual(config.longTapHoldThreshold, 0.5)
-        XCTAssertEqual(config.longTapHoldDuration, 0.700)
     }
 
     // MARK: - TapEvent
@@ -260,7 +195,6 @@ final class TapDetectorTests: XCTestCase {
     func testTapEventEquality() {
         XCTAssertEqual(TapEvent.singleTap, TapEvent.singleTap)
         XCTAssertEqual(TapEvent.doubleTap, TapEvent.doubleTap)
-        XCTAssertEqual(TapEvent.longTap, TapEvent.longTap)
         XCTAssertNotEqual(TapEvent.singleTap, TapEvent.doubleTap)
     }
 }
