@@ -3,25 +3,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "TapDetection",
+    name: "TapTap",
     platforms: [
-        .watchOS(.v9),
-        .iOS(.v16),
-        .macOS(.v13)
+        .iOS(.v15),
+        .watchOS(.v8),
+        .macOS(.v12),
     ],
     products: [
         .library(
-            name: "TapDetection",
-            targets: ["TapDetection"]
+            name: "TapTap",
+            targets: ["TapTap"]
         ),
     ],
     targets: [
         .target(
-            name: "TapDetection"
+            name: "TapTap"
         ),
         .testTarget(
-            name: "TapDetectionTests",
-            dependencies: ["TapDetection"]
+            name: "TapTapTests",
+            dependencies: ["TapTap"]
         ),
     ]
 )
