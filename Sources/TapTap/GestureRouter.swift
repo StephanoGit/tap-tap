@@ -38,8 +38,31 @@ public final class GestureRouter {
 
     /// Handle an incoming gesture string.
     ///
+    /// Routes gestures to ``ReplyManager/shared`` actions:
+    /// - `"swipeUp"` → `selectPrevious()`
+    /// - `"swipeDown"` → `selectNext()`
+    /// - `"swipeLeft"` → `reset()`
+    /// - `"doubleTap"` → `sendSelected()`
+    /// - `"singleTap"` → prints the selected index
+    ///
+    /// Also invokes the ``onGesture`` callback if set.
+    ///
     /// - Parameter gesture: The gesture identifier (e.g. `"singleTap"`).
     public func handle(_ gesture: String) {
+        switch gesture {
+        case "swipeUp":
+            ReplyManager.shared.selectPrevious()
+        case "swipeDown":
+            ReplyManager.shared.selectNext()
+        case "swipeLeft":
+            ReplyManager.shared.reset()
+        case "doubleTap":
+            ReplyManager.shared.sendSelected()
+        case "singleTap":
+            print("Selected index: \(ReplyManager.shared.selectedIndex)")
+        default:
+            break
+        }
         onGesture?(gesture)
     }
 }

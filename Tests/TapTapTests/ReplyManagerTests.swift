@@ -104,8 +104,10 @@ final class ReplyManagerTests: XCTestCase {
         ReplyManager.shared.handleURL(url)
         XCTAssertEqual(ReplyManager.shared.replies.count, 3)
 
+        ReplyManager.shared.selectNext()
         ReplyManager.shared.reset()
         XCTAssertTrue(ReplyManager.shared.replies.isEmpty)
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 0)
     }
 
     // MARK: - Empty Values
@@ -127,5 +129,63 @@ final class ReplyManagerTests: XCTestCase {
 
         XCTAssertTrue(handled)
         XCTAssertEqual(ReplyManager.shared.replies, ["First", "Second", "Third"])
+    }
+
+    // MARK: - Selection
+
+    func testSelectedReplyReturnsNilWhenEmpty() {
+        XCTAssertNil(ReplyManager.shared.selectedReply)
+    }
+
+    func testSelectedReplyReturnsFirstByDefault() {
+        let url = URL(string: "taptap://replies?r1=A&r2=B&r3=C")!
+        ReplyManager.shared.handleURL(url)
+        XCTAssertEqual(ReplyManager.shared.selectedReply, "A")
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 0)
+    }
+
+    func testSelectNextMovesForward() {
+        let url = URL(string: "taptap://replies?r1=A&r2=B&r3=C")!
+        ReplyManager.shared.handleURL(url)
+
+        ReplyManager.shared.selectNext()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 1)
+        XCTAssertEqual(ReplyManager.shared.selectedReply, "B")
+
+        ReplyManager.shared.selectNext()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 2)
+        XCTAssertEqual(ReplyManager.shared.selectedReply, "C")
+    }
+
+    func testSelectNextClampsAtEnd() {
+        let url = URL(string: "taptap://replies?r1=A&r2=B")!
+        ReplyManager.shared.handleURL(url)
+
+        ReplyManager.shared.selectNext()
+        ReplyManager.shared.selectNext()
+        ReplyManager.shared.selectNext()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 1)
+    }
+
+    func testSelectPreviousMovesBackward() {
+        let url = URL(string: "taptap://replies?r1=A&r2=B&r3=C")!
+        ReplyManager.shared.handleURL(url)
+
+        ReplyManager.shared.selectNext()
+        ReplyManager.shared.selectNext()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 2)
+
+        ReplyManager.shared.selectPrevious()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 1)
+        XCTAssertEqual(ReplyManager.shared.selectedReply, "B")
+    }
+
+    func testSelectPreviousClampsAtZero() {
+        let url = URL(string: "taptap://replies?r1=A&r2=B")!
+        ReplyManager.shared.handleURL(url)
+
+        ReplyManager.shared.selectPrevious()
+        ReplyManager.shared.selectPrevious()
+        XCTAssertEqual(ReplyManager.shared.selectedIndex, 0)
     }
 }

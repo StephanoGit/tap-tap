@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 /// Manages replies received via the `taptap://replies` URL scheme.
 ///
@@ -30,6 +33,15 @@ public final class ReplyManager {
     /// Contains the values of `r1`, `r2`, `r3` query parameters (in order),
     /// skipping any that are absent.
     public private(set) var replies: [String] = []
+
+    /// The index of the currently selected reply.
+    public private(set) var selectedIndex: Int = 0
+
+    /// The currently selected reply string, or `nil` if replies is empty.
+    public var selectedReply: String? {
+        guard !replies.isEmpty else { return nil }
+        return replies[selectedIndex]
+    }
 
     private init() {}
 
@@ -64,8 +76,36 @@ public final class ReplyManager {
         return true
     }
 
-    /// Reset replies to an empty array.
+    /// Reset replies to an empty array and reset the selected index.
     public func reset() {
         replies = []
+        selectedIndex = 0
+    }
+
+    /// Move the selection to the next reply (clamped to the last index).
+    public func selectNext() {
+        guard !replies.isEmpty else { return }
+        selectedIndex = min(selectedIndex + 1, replies.count - 1)
+    }
+
+    /// Move the selection to the previous reply (clamped to 0).
+    public func selectPrevious() {
+        guard !replies.isEmpty else { return }
+        selectedIndex = max(selectedIndex - 1, 0)
+    }
+
+    /// Open the Shortcuts app to send the currently selected reply.
+    ///
+    /// Builds and opens `shortcuts://run-shortcut?name=TapTapSend&input=[encoded reply]`.
+    /// No-op if replies is empty.
+    public func sendSelected() {
+        #if os(iOS)
+        guard let reply = selectedReply,
+              let encoded = reply.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "shortcuts://run-shortcut?name=TapTapSend&input=\(encoded)") else {
+            return
+        }
+        UIApplication.shared.open(url)
+        #endif
     }
 }
