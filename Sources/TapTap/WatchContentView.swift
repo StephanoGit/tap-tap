@@ -92,6 +92,7 @@ public struct WatchContentView: View {
                 .exclusively(before: TapGesture().onEnded { _ in
                     viewModel.handleLocalGesture("singleTap")
                 })
+        )
     }
 }
 
