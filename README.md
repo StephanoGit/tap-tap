@@ -259,7 +259,17 @@ class TapViewModel: ObservableObject {
     private let queue = OperationQueue()
 
     init() {
+        // Activate WCSession for Watch → Phone communication
+        _ = WatchSessionManager.shared
+
         tapDetector.onTap = { [weak self] event in
+            let gesture: String
+            switch event {
+            case .singleTap:  gesture = "singleTap"
+            case .doubleTap:  gesture = "doubleTap"
+            case .longTap:    gesture = "longTap"
+            }
+            WatchSessionManager.shared.send(gesture)
             DispatchQueue.main.async {
                 self?.tapCount += 1
                 switch event {
@@ -271,6 +281,14 @@ class TapViewModel: ObservableObject {
         }
 
         swipeDetector.onSwipe = { [weak self] event in
+            let gesture: String
+            switch event {
+            case .swipe(.left):   gesture = "swipeLeft"
+            case .swipe(.right):  gesture = "swipeRight"
+            case .swipe(.up):     gesture = "swipeUp"
+            case .swipe(.down):   gesture = "swipeDown"
+            }
+            WatchSessionManager.shared.send(gesture)
             DispatchQueue.main.async {
                 self?.swipeCount += 1
                 switch event {
@@ -341,6 +359,52 @@ Once the app launches on your Apple Watch:
 | Swipes not detected | Lower `activationThreshold` (e.g. `0.3`) or decrease `minDisplacement` (e.g. `0.04`). |
 | Diagonal swipes triggering | Increase `axisRatio` (e.g. `2.0`) to require more directional motion. |
 | App crashes on launch | Ensure `NSMotionUsageDescription` is set in `Info.plist`. |
+
+## Watch → Phone Communication
+
+The library includes `WatchSessionManager` (watchOS) and `PhoneSessionManager` (iOS) for sending detected gestures from the Apple Watch to the paired iPhone via WatchConnectivity.
+
+### iPhone App Setup
+
+In your iPhone app entry point, activate `PhoneSessionManager` and handle incoming gestures via `GestureRouter`:
+
+```swift
+import SwiftUI
+import TapTap
+
+@main
+struct MyPhoneApp: App {
+    init() {
+        _ = PhoneSessionManager.shared
+
+        GestureRouter.shared.onGesture = { gesture in
+            DispatchQueue.main.async {
+                switch gesture {
+                case "singleTap":  print("Watch: single tap")
+                case "doubleTap":  print("Watch: double tap")
+                case "longTap":    print("Watch: long tap")
+                case "swipeLeft":  print("Watch: swipe left")
+                case "swipeRight": print("Watch: swipe right")
+                case "swipeUp":    print("Watch: swipe up")
+                case "swipeDown":  print("Watch: swipe down")
+                default:           break
+                }
+            }
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .onOpenURL { url in
+                    ReplyManager.shared.handleURL(url)
+                }
+        }
+    }
+}
+```
+
+The watch app code (Step 4 above) already calls `WatchSessionManager.shared.send()` for all 7 gestures. The iPhone receives them via `PhoneSessionManager` → `GestureRouter.shared.onGesture`.
 
 ## License
 
