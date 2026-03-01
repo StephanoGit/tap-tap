@@ -27,18 +27,31 @@ public final class PhoneSessionManager: NSObject, WCSessionDelegate {
 
     /// Push the current reply state to the paired Apple Watch.
     ///
-    /// Sends `["replies": [...], "selectedIndex": Int]` via `sendMessage`.
+    /// Uses `sendMessage` for immediate delivery when reachable, and
+    /// `updateApplicationContext` as a reliable fallback so the watch
+    /// receives state even when not immediately reachable.
+    ///
     /// Call this whenever ``ReplyManager/replies`` or
     /// ``ReplyManager/selectedIndex`` changes.
     public func pushReplyState() {
-        guard WCSession.default.isReachable else { return }
         let state: [String: Any] = [
             "replies": ReplyManager.shared.replies,
             "selectedIndex": ReplyManager.shared.selectedIndex
         ]
         print("📱 Pushing reply state to watch: \(state)")
-        WCSession.default.sendMessage(state, replyHandler: nil) { error in
-            print("📱 Failed to push reply state: \(error.localizedDescription)")
+
+        // Immediate delivery when reachable
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(state, replyHandler: nil) { error in
+                print("📱 Failed to push reply state via message: \(error.localizedDescription)")
+            }
+        }
+
+        // Reliable fallback — delivered when watch next launches or becomes active
+        do {
+            try WCSession.default.updateApplicationContext(state)
+        } catch {
+            print("📱 Failed to update application context: \(error.localizedDescription)")
         }
     }
 

@@ -58,6 +58,17 @@ public final class WatchSessionManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Load any existing application context that was set before launch.
+    /// Call this after setting ``onReplyStateChanged`` to receive the
+    /// initial state.
+    public func loadCachedState() {
+        let ctx = WCSession.default.receivedApplicationContext
+        if !ctx.isEmpty {
+            print("⌚ Loading cached application context: \(ctx)")
+            handleReplyState(ctx)
+        }
+    }
+
     /// Send a gesture string to the paired iPhone.
     ///
     /// - Parameter gesture: One of `"singleTap"`, `"doubleTap"`, `"longTap"`,
@@ -83,17 +94,27 @@ public final class WatchSessionManager: NSObject, WCSessionDelegate {
 
     public func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         print("⌚ Received message from phone: \(message)")
+        handleReplyState(message)
+    }
 
+    /// Handle application context updates (reliable fallback delivery).
+    public func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        print("⌚ Received application context from phone: \(applicationContext)")
+        handleReplyState(applicationContext)
+    }
+
+    /// Parse reply state from a dictionary and update local state.
+    private func handleReplyState(_ data: [String: Any]) {
         // Handle reply state updates from iPhone
-        if let newReplies = message["replies"] as? [String],
-           let newIndex = message["selectedIndex"] as? Int {
+        if let newReplies = data["replies"] as? [String],
+           let newIndex = data["selectedIndex"] as? Int {
             replies = newReplies
             selectedIndex = newIndex
             onReplyStateChanged?(replies, selectedIndex)
         }
 
         // Handle gesture acknowledgments
-        if let gestureAck = message["gestureAck"] as? String {
+        if let gestureAck = data["gestureAck"] as? String {
             onGestureAck?(gestureAck)
         }
     }

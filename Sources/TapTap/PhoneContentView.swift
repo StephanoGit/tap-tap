@@ -139,11 +139,17 @@ public final class PhoneReplyViewModel: ObservableObject {
 
     private func syncState() {
         let mgr = ReplyManager.shared
-        if mgr.replies != replies {
+        let repliesChanged = mgr.replies != replies
+        let indexChanged = mgr.selectedIndex != selectedIndex
+        if repliesChanged {
             replies = mgr.replies
         }
-        if mgr.selectedIndex != selectedIndex {
+        if indexChanged {
             selectedIndex = mgr.selectedIndex
+        }
+        // Push to watch whenever state changes (e.g. after URL loading)
+        if repliesChanged || indexChanged {
+            PhoneSessionManager.shared.pushReplyState()
         }
     }
 

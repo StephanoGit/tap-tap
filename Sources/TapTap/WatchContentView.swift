@@ -113,6 +113,9 @@ public final class WatchReplyViewModel: ObservableObject {
             }
         }
 
+        // Load any cached application context from before launch
+        WatchSessionManager.shared.loadCachedState()
+
         // Also poll WatchSessionManager state at 10 Hz as fallback
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
